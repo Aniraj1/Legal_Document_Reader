@@ -1,0 +1,3 @@
+GitHub Repository: https://github.com/Ethanduong-BA/digital-twin-rag-solution/tree/AK_004
+Live Deployment: https://digital-twin-rag-solution.vercel.app
+MCP Endpoint: https://digital-twin-rag-solution.vercel.app/api/mcp

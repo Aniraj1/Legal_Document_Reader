@@ -1,0 +1,41 @@
+[
+  {
+    "id": "265d4c1a-fb3c-4c5e-81bb-c00336074dd6",
+    "ownerId": "user:admin",
+    "fileName": "Master of Information Communication Technology StudyPlan - Commencing Students.pdf",
+    "mimeType": "application/pdf",
+    "size": 271928,
+    "status": "ready",
+    "chunkCount": 1,
+    "vectorIds": [
+      "doc-265d4c1a-fb3c-4c5e-81bb-c00336074dd6-74a21e56-5e96-4642-80a2-26c2ba3ff247"
+    ],
+    "createdAt": "2026-03-15T07:05:41.507Z"
+  },
+  {
+    "id": "ae2d78a6-ce3e-47e1-af5a-c326eabbdf1b",
+    "ownerId": "user:admin",
+    "fileName": "Timetable access.docx",
+    "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "size": 356309,
+    "status": "ready",
+    "chunkCount": 1,
+    "vectorIds": [
+      "doc-ae2d78a6-ce3e-47e1-af5a-c326eabbdf1b-81da6480-6ba6-444e-b965-747a92def4b9"
+    ],
+    "createdAt": "2026-03-15T07:05:55.640Z"
+  },
+  {
+    "id": "6dc4eb52-4d18-4bee-856f-e8e99faf90ca",
+    "ownerId": "user:admin",
+    "fileName": "Master of Information Communication Technology StudyPlan - Commencing Students.pdf",
+    "mimeType": "application/pdf",
+    "size": 271928,
+    "status": "ready",
+    "chunkCount": 1,
+    "vectorIds": [
+      "doc-6dc4eb52-4d18-4bee-856f-e8e99faf90ca-c020004a-f997-4c61-8518-5c1b034575f4"
+    ],
+    "createdAt": "2026-03-15T07:27:32.571Z"
+  }
+]

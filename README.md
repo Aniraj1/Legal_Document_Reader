@@ -98,6 +98,10 @@ OWNER_FIRST_NAME=YourFirstName
 # Optional (for analytics)
 UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your-redis-token
+
+# Optional (for secure document assistant auth)
+# JSON array: [{"username":"admin","password":"strong-password","role":"admin"}]
+DOCUMENT_AUTH_USERS_JSON=[{"username":"admin","password":"replace-me","role":"admin"}]
 ```
 
 | Variable | Required | Description |
@@ -109,6 +113,15 @@ UPSTASH_REDIS_REST_TOKEN=your-redis-token
 | `OWNER_FIRST_NAME` | Yes | First name for welcome message (e.g., "Aniraj") |
 | `UPSTASH_REDIS_REST_URL` | No | Analytics storage (falls back to in-memory) |
 | `UPSTASH_REDIS_REST_TOKEN` | No | Redis authentication |
+| `DOCUMENT_AUTH_USERS_JSON` | No* | Document assistant users/roles (`admin` or `user`); required in production for `/documents` |
+
+\* In development, if `DOCUMENT_AUTH_USERS_JSON` is not set, default credentials are enabled for `/documents`: `admin` / `admin123`.
+
+## Legal Document Assistant
+
+- Open `http://localhost:3000/documents`
+- Sign in, upload `.pdf`/`.docx`, and chat with citations
+- One-click delete removes the document record and associated vector embeddings
 
 ## MCP Integration
 

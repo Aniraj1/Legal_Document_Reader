@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
-import { getInterviewAnalytics, clearInterviewAnalytics } from "@/lib/analytics"
+import { getLegalAnalytics, clearLegalAnalytics } from "@/lib/analytics"
 
 export async function GET() {
   try {
-    const analytics = await getInterviewAnalytics()
+    const analytics = await getLegalAnalytics()
     return NextResponse.json(analytics)
   } catch (error) {
     console.error("[Analytics API] Error:", error)
@@ -16,7 +16,7 @@ export async function GET() {
 
 export async function DELETE() {
   try {
-    await clearInterviewAnalytics()
+    await clearLegalAnalytics()
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[Analytics API] Error clearing:", error)

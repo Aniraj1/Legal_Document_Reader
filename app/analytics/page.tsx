@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { NavbarControls } from "@/components/navbar-controls"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,9 +23,10 @@ import {
 
 interface InterviewEvent {
   timestamp: string
+  eventType?: "chat" | "upload" | "delete"
   status: "success" | "error"
-  model: string
-  queryHash: string
+  model?: string
+  queryHash?: string
   querySample?: string
   totalMs: number
   vectorMs?: number
@@ -45,6 +47,10 @@ interface AnalyticsSummary {
   querySamples: Array<{ query: string; count: number }>
   recentEvents: InterviewEvent[]
   hourlyDistribution: Array<{ hour: number; count: number }>
+  totalEvents?: number
+  totalUploads?: number
+  totalDeletes?: number
+  topDocuments?: Array<{ document: string; count: number }>
 }
 
 export default function AnalyticsPage() {
@@ -134,9 +140,10 @@ export default function AnalyticsPage() {
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="w-4 h-4" />
-              Back to Interview
+              Back to Legal Assistant
             </Link>
-            <h1 className="text-2xl font-bold text-primary">Interview Analytics</h1>
+            <h1 className="text-2xl font-bold text-primary">Legal Document Analytics</h1>
+            <Badge variant="outline" className="uppercase">legal</Badge>
             {lastUpdated && (
               <span className="text-xs text-muted-foreground">
                 Updated {lastUpdated.toLocaleTimeString()}
@@ -144,6 +151,7 @@ export default function AnalyticsPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <NavbarControls showAnalytics={false} />
             <Button
               variant={autoRefresh ? "default" : "outline"}
               size="sm"
@@ -181,11 +189,14 @@ export default function AnalyticsPage() {
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
-                Total Queries
+                Total Chats
               </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{analytics.totalQueries}</p>
+              <p className="text-sm text-muted-foreground">
+                {analytics.totalUploads ?? 0} uploads / {analytics.totalDeletes ?? 0} deletes
+              </p>
             </CardContent>
           </Card>
 
@@ -246,9 +257,11 @@ export default function AnalyticsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="w-5 h-5" />
-                Profile Sources Used
+                Legal Sources Used
               </CardTitle>
-              <CardDescription>Which profile sections are most referenced</CardDescription>
+              <CardDescription>
+                Which document sections are most referenced
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {analytics.topSourceTypes.length === 0 ? (
@@ -311,12 +324,36 @@ export default function AnalyticsPage() {
           </Card>
         </div>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5" />
+              Top Documents
+            </CardTitle>
+            <CardDescription>Most queried/modified legal documents</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!analytics.topDocuments || analytics.topDocuments.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No document activity yet</p>
+            ) : (
+              <div className="space-y-2">
+                {analytics.topDocuments.map((item, index) => (
+                  <div key={`${item.document}:${index}`} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <p className="text-sm truncate pr-4">{item.document}</p>
+                    <Badge variant="secondary">{item.count}x</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Popular Questions */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5" />
-              Popular Interview Questions
+              Popular Legal Questions
             </CardTitle>
             <CardDescription>Most frequently asked questions</CardDescription>
           </CardHeader>
@@ -343,7 +380,7 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Interview Queries</CardTitle>
-            <CardDescription>Last 20 interview interactions</CardDescription>
+            <CardDescription>Last 20 legal document interactions</CardDescription>
           </CardHeader>
           <CardContent>
             {analytics.recentEvents.length === 0 ? (
@@ -368,6 +405,11 @@ export default function AnalyticsPage() {
                         <span className="text-xs text-muted-foreground">
                           {formatTime(event.timestamp)}
                         </span>
+                        {event.eventType && (
+                          <Badge variant="secondary" className="text-xs uppercase">
+                            {event.eventType}
+                          </Badge>
+                        )}
                         <span className="text-xs text-muted-foreground">
                           {formatMs(event.totalMs)}
                         </span>

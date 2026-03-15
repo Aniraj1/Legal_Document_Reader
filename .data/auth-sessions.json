@@ -1,0 +1,11 @@
+[
+  {
+    "id": "43349314-a503-47bd-8112-64b75d2b2b9f",
+    "user": {
+      "id": "user:admin",
+      "username": "admin",
+      "role": "admin"
+    },
+    "expiresAt": "2026-03-15T22:19:24.870Z"
+  }
+]

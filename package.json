@@ -1,14 +1,11 @@
 {
-  "name": "digital-twin",
+  "name": "legal-document-assistant",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "start": "next start",
-    "upsert-profile": "tsx scripts/upsert-profile.ts",
-    "test-interview": "tsx scripts/test-interview.ts",
-    "run-simulation": "tsx scripts/run-interview-simulation.ts"
+    "start": "next start"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -51,9 +48,10 @@
     "groq-sdk": "0.37.0",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
-    "mcp-handler": "^1.0.4",
+    "mammoth": "^1.12.0",
     "next": "16.0.10",
     "next-themes": "^0.4.6",
+    "pdf-parse": "^1.1.1",
     "react": "19.2.0",
     "react-day-picker": "9.8.0",
     "react-dom": "19.2.0",

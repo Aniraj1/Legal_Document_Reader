@@ -2,7 +2,7 @@
 
 ## Objective
 
-Extend the current Digital Twin system into a secure legal-document assistant that can:
+Build a secure legal-document assistant that can:
 
 1. Accept PDF and Word documents (`.pdf`, `.docx`)
 2. Extract and index content safely
@@ -25,7 +25,7 @@ Extend the current Digital Twin system into a secure legal-document assistant th
 ## Current Baseline (What we already have)
 
 - Next.js application with server actions and API routes
-- RAG pattern already implemented for profile-based interview chat
+- RAG pattern already implemented in this codebase and adapted for legal document chat
 - Upstash Vector integration for semantic retrieval
 - MCP tooling and simulation/testing scripts
 

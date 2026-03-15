@@ -21,7 +21,7 @@ import {
   Play,
 } from "lucide-react"
 
-interface InterviewEvent {
+interface LegalEvent {
   timestamp: string
   eventType?: "chat" | "upload" | "delete"
   status: "success" | "error"
@@ -45,7 +45,7 @@ interface AnalyticsSummary {
   avgGroqMs: number
   topSourceTypes: Array<{ type: string; count: number }>
   querySamples: Array<{ query: string; count: number }>
-  recentEvents: InterviewEvent[]
+  recentEvents: LegalEvent[]
   hourlyDistribution: Array<{ hour: number; count: number }>
   totalEvents?: number
   totalUploads?: number
@@ -298,7 +298,7 @@ export default function AnalyticsPage() {
                 <Zap className="w-5 h-5" />
                 Query Activity by Hour
               </CardTitle>
-              <CardDescription>When interviews happen most</CardDescription>
+              <CardDescription>When legal-document activity happens most</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-end gap-1 h-32">
@@ -379,7 +379,7 @@ export default function AnalyticsPage() {
         {/* Recent Events */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Interview Queries</CardTitle>
+            <CardTitle>Recent Legal Queries</CardTitle>
             <CardDescription>Last 20 legal document interactions</CardDescription>
           </CardHeader>
           <CardContent>

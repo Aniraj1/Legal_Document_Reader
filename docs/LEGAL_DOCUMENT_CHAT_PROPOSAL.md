@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-This proposal recommends extending the current Digital Twin platform into a **secure legal document conversational assistant**. The new capability will allow users to upload legal files (PDF and DOCX), ask natural-language questions, and receive grounded responses with citations while maintaining strict data protection controls suitable for sensitive contractual content.
+This proposal recommends implementing a **secure legal document conversational assistant**. The capability allows users to upload legal files (PDF and DOCX), ask natural-language questions, and receive grounded responses with citations while maintaining strict data protection controls suitable for sensitive contractual content.
 
 The solution reuses the existing RAG foundation (Next.js + vector retrieval + LLM orchestration) and adds secure ingestion, document-scoped retrieval, and governance controls.
 
@@ -102,7 +102,7 @@ Because the system handles legal content, security is a first-order requirement,
 ### 6.2 Integration with Existing Stack
 
 - Reuse existing Next.js app, server action patterns, and vector integration
-- Add document-focused services rather than replacing current interview features
+- Add document-focused services as the primary product workflow
 - Maintain compatibility with current MCP architecture where practical
 
 ---

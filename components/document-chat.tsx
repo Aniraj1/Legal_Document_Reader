@@ -1,9 +1,11 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Check, Copy, FileText, Loader2, Send, ShieldCheck, Trash2, UploadCloud } from "lucide-react"
+import Link from "next/link"
+import { Check, Copy, FileText, Loader2, Send, Trash2, UploadCloud } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/hooks/use-auth"
 import {
   documentChat,
   type DocumentChatMessage,
@@ -59,11 +61,8 @@ async function copyText(text: string): Promise<void> {
 }
 
 export function DocumentChat() {
+  const { user: authUser, isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [authModeHint, setAuthModeHint] = useState("")
-  const [isAuthLoading, setIsAuthLoading] = useState(true)
   const [documents, setDocuments] = useState<StoredDocument[]>([])
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>("")
   const [question, setQuestion] = useState("")
@@ -84,10 +83,6 @@ export function DocumentChat() {
   const canSend = question.trim().length > 0 && selectedDocumentId.length > 0 && !isLoading
 
   function handleUnauthorized(message?: string): never {
-    setUser(null)
-    setDocuments([])
-    setSelectedDocumentId("")
-    setMessages([])
     throw new Error(message ?? "Session expired. Please sign in again.")
   }
 
@@ -96,8 +91,17 @@ export function DocumentChat() {
   }, [messages.length, isLoading])
 
   useEffect(() => {
-    void loadAuthState()
-  }, [])
+    if (!authUser) {
+      setUser(null)
+      return
+    }
+
+    setUser({
+      id: String(authUser.id),
+      username: authUser.username,
+      role: "user",
+    })
+  }, [authUser])
 
   useEffect(() => {
     if (!user) {
@@ -108,46 +112,6 @@ export function DocumentChat() {
     }
     void loadDocuments()
   }, [user])
-
-  async function loadAuthState(): Promise<void> {
-    setIsAuthLoading(true)
-    try {
-      const response = await fetch("/api/auth/me", { cache: "no-store" })
-      const payload = (await response.json()) as { user?: AuthUser | null; mode?: string; error?: string }
-      if (!response.ok) throw new Error(payload.error ?? "Failed to check session")
-      setUser(payload.user ?? null)
-      setAuthModeHint(payload.mode ?? "")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load auth status")
-    } finally {
-      setIsAuthLoading(false)
-    }
-  }
-
-  async function handleLogin(e: React.FormEvent): Promise<void> {
-    e.preventDefault()
-    setError(null)
-    setIsAuthLoading(true)
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      })
-
-      const payload = (await response.json()) as { user?: AuthUser; error?: string }
-      if (!response.ok || !payload.user) {
-        throw new Error(payload.error ?? "Login failed")
-      }
-      setUser(payload.user)
-      setPassword("")
-      setQuestion("")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
-    } finally {
-      setIsAuthLoading(false)
-    }
-  }
 
   async function loadDocuments(): Promise<void> {
     try {
@@ -296,7 +260,7 @@ export function DocumentChat() {
     }, 1500)
   }
 
-  if (isAuthLoading && !user) {
+  if (isAuthLoading) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
         <Loader2 className="w-5 h-5 animate-spin" />
@@ -304,34 +268,16 @@ export function DocumentChat() {
     )
   }
 
-  if (!user) {
+  if (!isAuthenticated || !user) {
     return (
       <div className="h-full flex items-center justify-center px-4">
-        <form onSubmit={handleLogin} className="w-full max-w-sm rounded-lg border p-5 bg-card space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <ShieldCheck className="w-4 h-4" /> Authenticated document mode
-          </div>
+        <div className="w-full max-w-sm rounded-lg border p-5 bg-card space-y-3">
           <h2 className="text-lg font-semibold">Sign in to access legal documents</h2>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
-            className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-          />
-          <Button type="submit" className="w-full" disabled={isAuthLoading || !username || !password}>
-            {isAuthLoading ? "Signing in..." : "Sign in"}
+          <Button asChild className="w-full">
+            <Link href="/auth/login">Go to login</Link>
           </Button>
-          {authModeHint && <p className="text-[11px] text-muted-foreground">{authModeHint}</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
-        </form>
+        </div>
       </div>
     )
   }

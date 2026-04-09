@@ -1,14 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Check, Copy, FileText, Loader2, Send, ShieldCheck, Trash2, UploadCloud } from "lucide-react"
+import Link from "next/link"
+import { Check, Copy, FileText, Loader2, Send, Trash2, UploadCloud } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  documentChat,
-  type DocumentChatMessage,
-  type DocumentChatResponse,
-} from "@/app/actions-document-chat"
+import { useAuth } from "@/hooks/use-auth"
+import { apiClient } from "@/lib/api-client"
 
 type AllowedModel = "llama-3.1-8b-instant" | "llama-3.3-70b-versatile"
 
@@ -31,15 +29,30 @@ type MessageView = {
   id: string
   role: "user" | "assistant"
   content: string
-  sources?: DocumentChatResponse["sources"]
+  sources?: Array<{
+    id: string
+    score: number
+    data?: string
+    metadata?: Record<string, unknown>
+  }>
 }
 
 function createMessageId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-function toServerMessages(messages: MessageView[]): DocumentChatMessage[] {
+function toServerMessages(messages: MessageView[]): Array<{ role: "user" | "assistant"; content: string }> {
   return messages.map((item) => ({ role: item.role, content: item.content }))
+}
+
+function toStoredDocument(item: { id: string; file_name: string }): StoredDocument {
+  return {
+    id: item.id,
+    fileName: item.file_name,
+    createdAt: new Date().toISOString(),
+    status: "ready",
+    chunkCount: 0,
+  }
 }
 
 async function copyText(text: string): Promise<void> {
@@ -59,11 +72,8 @@ async function copyText(text: string): Promise<void> {
 }
 
 export function DocumentChat() {
+  const { user: authUser, isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [authModeHint, setAuthModeHint] = useState("")
-  const [isAuthLoading, setIsAuthLoading] = useState(true)
   const [documents, setDocuments] = useState<StoredDocument[]>([])
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>("")
   const [question, setQuestion] = useState("")
@@ -84,10 +94,6 @@ export function DocumentChat() {
   const canSend = question.trim().length > 0 && selectedDocumentId.length > 0 && !isLoading
 
   function handleUnauthorized(message?: string): never {
-    setUser(null)
-    setDocuments([])
-    setSelectedDocumentId("")
-    setMessages([])
     throw new Error(message ?? "Session expired. Please sign in again.")
   }
 
@@ -96,8 +102,17 @@ export function DocumentChat() {
   }, [messages.length, isLoading])
 
   useEffect(() => {
-    void loadAuthState()
-  }, [])
+    if (!authUser) {
+      setUser(null)
+      return
+    }
+
+    setUser({
+      id: String(authUser.id),
+      username: authUser.username,
+      role: "user",
+    })
+  }, [authUser])
 
   useEffect(() => {
     if (!user) {
@@ -109,56 +124,18 @@ export function DocumentChat() {
     void loadDocuments()
   }, [user])
 
-  async function loadAuthState(): Promise<void> {
-    setIsAuthLoading(true)
-    try {
-      const response = await fetch("/api/auth/me", { cache: "no-store" })
-      const payload = (await response.json()) as { user?: AuthUser | null; mode?: string; error?: string }
-      if (!response.ok) throw new Error(payload.error ?? "Failed to check session")
-      setUser(payload.user ?? null)
-      setAuthModeHint(payload.mode ?? "")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load auth status")
-    } finally {
-      setIsAuthLoading(false)
-    }
-  }
-
-  async function handleLogin(e: React.FormEvent): Promise<void> {
-    e.preventDefault()
-    setError(null)
-    setIsAuthLoading(true)
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      })
-
-      const payload = (await response.json()) as { user?: AuthUser; error?: string }
-      if (!response.ok || !payload.user) {
-        throw new Error(payload.error ?? "Login failed")
-      }
-      setUser(payload.user)
-      setPassword("")
-      setQuestion("")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
-    } finally {
-      setIsAuthLoading(false)
-    }
-  }
-
   async function loadDocuments(): Promise<void> {
     try {
-      const response = await fetch("/api/documents", { cache: "no-store" })
-      const payload = (await response.json()) as { documents?: StoredDocument[]; error?: string }
-      if (response.status === 401) {
-        handleUnauthorized(payload.error)
+      const result = await apiClient.getUserFiles()
+      if (result.success === false || result.error) {
+        const message = result.message || "Failed to load documents"
+        if (message.toLowerCase().includes("auth")) {
+          handleUnauthorized(message)
+        }
+        throw new Error(message)
       }
-      if (!response.ok) throw new Error(payload.error ?? "Failed to load documents")
 
-      const docs = payload.documents ?? []
+      const docs = (result.data?.results ?? []).map(toStoredDocument)
       setDocuments(docs)
       if (docs.length > 0 && !selectedDocumentId) {
         setSelectedDocumentId(docs[0].id)
@@ -173,33 +150,17 @@ export function DocumentChat() {
     setError(null)
 
     try {
-      const formData = new FormData()
-      formData.append("file", file)
-
-      const response = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData,
-      })
-
-      const payload = (await response.json()) as {
-        error?: string
-        document?: StoredDocument
-      }
-
-      if (response.status === 401) {
-        handleUnauthorized(payload.error)
-      }
-
-      if (!response.ok || !payload.document) {
-        throw new Error(payload.error ?? "Upload failed")
+      const result = await apiClient.uploadUserFile(file)
+      if (result.success === false || result.error || !result.data?.id) {
+        const message = result.message || "Upload failed"
+        if (message.toLowerCase().includes("auth")) {
+          handleUnauthorized(message)
+        }
+        throw new Error(message)
       }
 
       await loadDocuments()
-      setDocuments((current) => {
-        const existing = current.filter((item) => item.id !== payload.document!.id)
-        return [payload.document!, ...existing]
-      })
-      setSelectedDocumentId(payload.document.id)
+      setSelectedDocumentId(String(result.data.id))
       setMessages([])
       setQuestion("")
     } catch (err) {
@@ -217,13 +178,13 @@ export function DocumentChat() {
 
     setError(null)
     try {
-      const response = await fetch(`/api/documents/${documentId}`, { method: "DELETE" })
-      const payload = (await response.json()) as { error?: string }
-      if (response.status === 401) {
-        handleUnauthorized(payload.error)
-      }
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Delete failed")
+      const result = await apiClient.removeUserFile(documentId)
+      if (result.success === false || result.error) {
+        const message = result.message || "Delete failed"
+        if (message.toLowerCase().includes("auth")) {
+          handleUnauthorized(message)
+        }
+        throw new Error(message)
       }
 
       await loadDocuments()
@@ -233,6 +194,32 @@ export function DocumentChat() {
         const remaining = documents.filter((item) => item.id !== documentId)
         setSelectedDocumentId(remaining[0]?.id ?? "")
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed")
+    }
+  }
+
+  async function handleDeleteAllDocuments(): Promise<void> {
+    if (isLoading || isUploading || documents.length === 0) return
+    if (!window.confirm("Delete all uploaded documents and indexed embeddings? This cannot be undone.")) {
+      return
+    }
+
+    setError(null)
+    try {
+      const result = await apiClient.removeAllUserFiles()
+      if (result.success === false || result.error) {
+        const message = result.message || "Delete failed"
+        if (message.toLowerCase().includes("auth")) {
+          handleUnauthorized(message)
+        }
+        throw new Error(message)
+      }
+
+      setDocuments([])
+      setSelectedDocumentId("")
+      setMessages([])
+      setQuestion("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed")
     }
@@ -257,18 +244,35 @@ export function DocumentChat() {
     setQuestion("")
 
     try {
-      const result = await documentChat({
-        question: trimmed,
-        documentId: selectedDocumentId,
+      const result = await apiClient.askGroq({
+        file_id: selectedDocumentId,
+        query: trimmed,
         model,
-        messages: toServerMessages(priorMessages),
+        chat_history: toServerMessages(priorMessages),
       })
+
+      if (result.success === false || result.error || !result.data?.answer) {
+        const message = result.message || "Failed to process your question"
+        if (message.toLowerCase().includes("auth")) {
+          handleUnauthorized(message)
+        }
+        throw new Error(message)
+      }
+
+      const normalizedSources = (result.data.sources ?? []).map((source, index) => ({
+        id: String(source.chunk_id ?? `source-${index + 1}`),
+        score: typeof source.relevance_score === "number" ? source.relevance_score : 0,
+        data: source.content_preview ?? "",
+        metadata: {
+          sourceLabel: source.section_title ?? `Source ${index + 1}`,
+        },
+      }))
 
       const assistantMessage: MessageView = {
         id: createMessageId(),
         role: "assistant",
-        content: result.answer,
-        sources: result.sources,
+        content: result.data.answer,
+        sources: normalizedSources,
       }
 
       setMessages((current) => [...current, assistantMessage])
@@ -296,7 +300,7 @@ export function DocumentChat() {
     }, 1500)
   }
 
-  if (isAuthLoading && !user) {
+  if (isAuthLoading) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
         <Loader2 className="w-5 h-5 animate-spin" />
@@ -304,34 +308,16 @@ export function DocumentChat() {
     )
   }
 
-  if (!user) {
+  if (!isAuthenticated || !user) {
     return (
       <div className="h-full flex items-center justify-center px-4">
-        <form onSubmit={handleLogin} className="w-full max-w-sm rounded-lg border p-5 bg-card space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <ShieldCheck className="w-4 h-4" /> Authenticated document mode
-          </div>
+        <div className="w-full max-w-sm rounded-lg border p-5 bg-card space-y-3">
           <h2 className="text-lg font-semibold">Sign in to access legal documents</h2>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
-            className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-          />
-          <Button type="submit" className="w-full" disabled={isAuthLoading || !username || !password}>
-            {isAuthLoading ? "Signing in..." : "Sign in"}
+          <Button asChild className="w-full">
+            <Link href="/auth/login">Go to login</Link>
           </Button>
-          {authModeHint && <p className="text-[11px] text-muted-foreground">{authModeHint}</p>}
           {error && <p className="text-sm text-destructive">{error}</p>}
-        </form>
+        </div>
       </div>
     )
   }
@@ -373,17 +359,30 @@ export function DocumentChat() {
           ) : (
             <p className="text-xs text-muted-foreground">Signed in as {user.username}</p>
           )}
-          {selectedDocument && (
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => void handleDeleteDocument(selectedDocument.id)}
-              className="h-7 px-2 gap-1"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Delete
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {documents.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleDeleteAllDocuments()}
+                className="h-7 px-2 gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Remove all
+              </Button>
+            )}
+            {selectedDocument && (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => void handleDeleteDocument(selectedDocument.id)}
+                className="h-7 px-2 gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </Button>
+            )}
+          </div>
         </div>
         {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
       </div>

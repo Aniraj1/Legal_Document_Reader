@@ -2,7 +2,7 @@
 
 ## Objective
 
-Extend the current Digital Twin system into a secure legal-document assistant that can:
+Build a secure legal-document assistant that can:
 
 1. Accept PDF and Word documents (`.pdf`, `.docx`)
 2. Extract and index content safely
@@ -25,7 +25,7 @@ Extend the current Digital Twin system into a secure legal-document assistant th
 ## Current Baseline (What we already have)
 
 - Next.js application with server actions and API routes
-- RAG pattern already implemented for profile-based interview chat
+- RAG pattern already implemented in this codebase and adapted for legal document chat
 - Upstash Vector integration for semantic retrieval
 - MCP tooling and simulation/testing scripts
 
@@ -52,6 +52,110 @@ This allows us to reuse core RAG orchestration and focus effort on document inge
 
 4. **Security + Governance Layer**
    - AuthN/AuthZ, encryption, audit logging, retention, deletion, and incident response controls
+
+---
+
+## Project RAG Architecture & Flow
+
+### System Architecture
+
+```mermaid
+graph TB
+  subgraph Client["🖥️ Frontend (Next.js)"]
+    UI["User Chat Interface<br/>components/document-chat.tsx"]
+    Action["Server Action<br/>app/actions-document-chat.ts"]
+  end
+
+  subgraph Auth["🔐 Authentication Layer"]
+    AuthAPI["Auth APIs<br/>/api/auth/login | /me | /logout<br/>lib/document-auth.ts"]
+    SessionStore["Session Store<br/>.data/auth-sessions.json"]
+  end
+
+  subgraph Upload["📤 Document Upload & Ingestion"]
+    UploadAPI["Upload Endpoint<br/>/api/documents/upload"]
+    Extraction["Extract & Parse<br/>extractSectionsFromDocument<br/>PDF | DOCX → Text Sections"]
+    Chunking["Segment Content<br/>splitIntoChunks<br/>~500-1000 char chunks<br/>with overlap"]
+    Registry["Document Registry<br/>.data/documents.json<br/>metadata tracking"]
+  end
+
+  subgraph Retrieve["🔍 RETRIEVE Phase"]
+    Query["User Question"]
+    VectorSearch["Vector Search<br/>searchDocumentChunks<br/>semantic similarity search"]
+    Filter["Owner & Doc Filter<br/>namespace = ownerId<br/>documentId filter"]
+    TopK["Rerank & Score<br/>lexical overlap scoring<br/>top-k retrieval"]
+    Context["Retrieved Chunks<br/>with metadata & scores"]
+  end
+
+  subgraph Augment["📝 AUGMENT Phase"]
+    PromptBuild["Build Augmented Prompt<br/>buildContext function<br/>System instructions +<br/>Retrieved context +<br/>Message history"]
+    AugmentedPrompt["System Prompt<br/>Legal document constraints<br/>Grounding rules"]
+  end
+
+  subgraph Generate["✨ GENERATE Phase"]
+    LLM["Groq Chat API<br/>llama-3.1-8b or<br/>llama-3.3-70b<br/>temperature: 0.2<br/>max_tokens: 700"]
+    Response["LLM Response<br/>grounded answer<br/>with citations"]
+  end
+
+  subgraph Storage["💾 Data Storage"]
+    Vector["Upstash Vector DB<br/>embeddings index<br/>scoped by ownerId namespace"]
+    Docs["Local Document Store<br/>.data/documents.json<br/>PDF/DOCX registry"]
+  end
+
+  subgraph Analytics["📊 Observability"]
+    EventTracker["Event Tracking<br/>lib/analytics.ts<br/>upload, chat, delete events"]
+    Redis["Upstash Redis<br/>legal:analytics:events<br/>1000 event buffer"]
+    AnalyticsAPI["Analytics API<br/>/api/analytics<br/>query, latency metrics"]
+  end
+
+  Client -->|1. Authenticate| Auth
+  Auth -->|Session| SessionStore
+  SessionStore -->|Valid?| Client
+
+  Client -->|2. Upload File| Upload
+  Upload -->|Extract| Extraction
+  Extraction -->|Parse| Chunking
+  Chunking -->|Store Metadata| Registry
+  Chunking -->|Upsert Vectors| Storage
+
+  Client -->|3. Ask Question| Action
+  Action -->|Check Auth| Auth
+  Action -->|Get Doc| Registry
+  
+  Action -->|Step 1: RETRIEVE| Retrieve
+  Query -->|Search| VectorSearch
+  VectorSearch -->|query to| Storage
+  Storage -->|results| Filter
+  Filter -->|strict access control| TopK
+  TopK -->|scored chunks| Context
+
+  Context -->|Step 2: AUGMENT| Augment
+  AugmentedPrompt -->|format with| PromptBuild
+  PromptBuild -->|ready prompt| Generate
+
+  Generate -->|Step 3: GENERATE| LLM
+  LLM -->|grounded by context| Response
+  Response -->|answer + sources| Client
+
+  Action -->|Track Event| Analytics
+  EventTracker -->|publish| Redis
+  Redis -->|query| AnalyticsAPI
+```
+
+### RAG Flow Sequence
+
+1. **RETRIEVE**: User question → vector similarity search in Upstash → filter by owner/document → top-k chunks scored by semantic + lexical relevance
+2. **AUGMENT**: Build prompt with system instructions + retrieved context + chat history + sanitized user question
+3. **GENERATE**: Send augmented prompt to Groq LLM → receive grounded answer → extract citations from retrieved sources
+4. **TRACK**: Log event with timing (vector latency, LLM latency, total latency) to Redis
+
+### Key Design Points
+
+- **Security**: All vector/doc queries filtered by `ownerId` namespace and `documentId` metadata
+- **Chunking**: ~500–1000 character chunks with section/page awareness, overlap for context preservation
+- **Reranking**: Semantic similarity score (0.75) + lexical overlap score (0.25) = composite rank
+- **Grounding**: System prompt enforces "answer only from provided context" constraint
+- **Citations**: Source metadata (`sourceLabel`, `pageRange`, etc.) returned with answer
+- **Analytics**: Every operation tracked with sub-millisecond latency metrics (vector search ms, LLM generation ms)
 
 ---
 

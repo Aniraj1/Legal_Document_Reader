@@ -23,7 +23,7 @@ interface AuthCredential {
   role: UserRole
 }
 
-const SESSION_COOKIE_NAME = "dt_doc_session"
+const SESSION_COOKIE_NAME = "legal_doc_session"
 const DATA_DIR = path.resolve(process.cwd(), ".data")
 const SESSIONS_PATH = path.resolve(DATA_DIR, "auth-sessions.json")
 const SESSION_TTL_SECONDS = 60 * 60 * 8

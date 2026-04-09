@@ -1,4 +1,0 @@
-https://digital-twin-rag-solution.vercel.app/api/mcp
-
-# Deployed: February 2026
-# Endpoint verified and working

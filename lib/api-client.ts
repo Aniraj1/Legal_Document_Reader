@@ -57,6 +57,39 @@ export interface AskGroqData {
   metadata?: Record<string, unknown>
 }
 
+export interface PersonalAnalyticsEvent {
+  timestamp: string
+  eventType?: 'chat' | 'upload' | 'delete'
+  status: 'success' | 'error'
+  model?: string
+  queryHash?: string
+  querySample?: string
+  totalMs: number
+  vectorMs?: number
+  groqMs?: number
+  sourceTypes?: string[]
+  sourceLabels?: string[]
+  errorMessage?: string
+}
+
+export interface PersonalAnalyticsSummary {
+  totalQueries: number
+  successCount: number
+  errorCount: number
+  successRate: number
+  avgTotalMs: number
+  avgVectorMs: number
+  avgGroqMs: number
+  topSourceTypes: Array<{ type: string; count: number }>
+  querySamples: Array<{ query: string; count: number }>
+  recentEvents: PersonalAnalyticsEvent[]
+  hourlyDistribution: Array<{ hour: number; count: number }>
+  totalEvents?: number
+  totalUploads?: number
+  totalDeletes?: number
+  topDocuments?: Array<{ document: string; count: number }>
+}
+
 class ApiClient {
   private baseUrl: string
   private projectName: string
@@ -356,6 +389,26 @@ class ApiClient {
     return this.request(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
+    })
+  }
+
+  /**
+   * Get personalized analytics for authenticated user
+   */
+  async getPersonalAnalytics(window: '24h' | '7d' | '30d' | 'all' = '7d'): Promise<ApiResponse<PersonalAnalyticsSummary>> {
+    const endpoint = `/analytics/me/?window=${encodeURIComponent(window)}`
+    return this.request(endpoint, {
+      method: 'GET',
+    })
+  }
+
+  /**
+   * Clear personalized analytics for authenticated user
+   */
+  async clearPersonalAnalytics(): Promise<ApiResponse> {
+    const endpoint = '/analytics/me/'
+    return this.request(endpoint, {
+      method: 'DELETE',
     })
   }
 }

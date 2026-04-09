@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { NavbarControls } from "@/components/navbar-controls"
+import { apiClient, type PersonalAnalyticsSummary, type PersonalAnalyticsEvent } from "@/lib/api-client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,40 +22,8 @@ import {
   Play,
 } from "lucide-react"
 
-interface LegalEvent {
-  timestamp: string
-  eventType?: "chat" | "upload" | "delete"
-  status: "success" | "error"
-  model?: string
-  queryHash?: string
-  querySample?: string
-  totalMs: number
-  vectorMs?: number
-  groqMs?: number
-  sourceTypes?: string[]
-  errorMessage?: string
-}
-
-interface AnalyticsSummary {
-  totalQueries: number
-  successCount: number
-  errorCount: number
-  successRate: number
-  avgTotalMs: number
-  avgVectorMs: number
-  avgGroqMs: number
-  topSourceTypes: Array<{ type: string; count: number }>
-  querySamples: Array<{ query: string; count: number }>
-  recentEvents: LegalEvent[]
-  hourlyDistribution: Array<{ hour: number; count: number }>
-  totalEvents?: number
-  totalUploads?: number
-  totalDeletes?: number
-  topDocuments?: Array<{ document: string; count: number }>
-}
-
 export default function AnalyticsPage() {
-  const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null)
+  const [analytics, setAnalytics] = useState<PersonalAnalyticsSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -64,10 +33,12 @@ export default function AnalyticsPage() {
     if (showLoading) setLoading(true)
     setError(null)
     try {
-      const response = await fetch("/api/analytics")
-      if (!response.ok) throw new Error("Failed to fetch analytics")
-      const data = await response.json()
-      setAnalytics(data)
+      const result = await apiClient.getPersonalAnalytics("7d")
+      if (result.success === false || result.error || !result.data) {
+        throw new Error(result.message || "Failed to fetch analytics")
+      }
+
+      setAnalytics(result.data)
       setLastUpdated(new Date())
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error")
@@ -77,12 +48,15 @@ export default function AnalyticsPage() {
   }
 
   const clearAnalytics = async () => {
-    if (!confirm("Are you sure you want to clear all analytics data?")) return
+    if (!confirm("Are you sure you want to clear your analytics data?")) return
     try {
-      await fetch("/api/analytics", { method: "DELETE" })
+      const result = await apiClient.clearPersonalAnalytics()
+      if (result.success === false || result.error) {
+        throw new Error(result.message || "Failed to clear analytics")
+      }
       await fetchAnalytics(true)
     } catch (err) {
-      setError("Failed to clear analytics")
+      setError(err instanceof Error ? err.message : "Failed to clear analytics")
     }
   }
 
@@ -413,7 +387,7 @@ export default function AnalyticsPage() {
                         <span className="text-xs text-muted-foreground">
                           {formatMs(event.totalMs)}
                         </span>
-                        {event.sourceTypes?.map((type) => (
+                        {(event.sourceTypes ?? event.sourceLabels)?.map((type: string) => (
                           <Badge key={type} variant="outline" className="text-xs capitalize">
                             {type}
                           </Badge>

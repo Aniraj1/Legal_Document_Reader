@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { Check, Copy, FileText, Loader2, Send, Trash2, UploadCloud } from "lucide-react"
+import { Check, Copy, FileText, Loader2, RefreshCcw, Send, Trash2, UploadCloud } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
@@ -300,6 +300,12 @@ export function DocumentChat() {
     }, 1500)
   }
 
+  function handleRefreshChat(): void {
+    setMessages([])
+    setQuestion("")
+    setError(null)
+  }
+
   if (isAuthLoading) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -524,14 +530,28 @@ export function DocumentChat() {
                 </button>
               </div>
 
-              <Button
-                type="submit"
-                size="icon"
-                disabled={!canSend}
-                className="h-7 w-7 rounded-full bg-foreground text-background hover:bg-foreground/90"
-              >
-                {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={handleRefreshChat}
+                  disabled={isLoading || (messages.length === 0 && question.trim().length === 0)}
+                  className="h-7 w-7 rounded-full"
+                  title="Start fresh chat"
+                >
+                  <RefreshCcw className="w-3.5 h-3.5" />
+                </Button>
+
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={!canSend}
+                  className="h-7 w-7 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                >
+                  {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                </Button>
+              </div>
             </div>
           </div>
         </form>

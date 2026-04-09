@@ -26,6 +26,18 @@ export interface AuthUser {
   is_superuser?: boolean
 }
 
+export interface UploadedFileItem {
+  id: string
+  file_name: string
+}
+
+export interface UploadedFileListData {
+  total: number
+  total_page: number
+  page: number
+  results: UploadedFileItem[]
+}
+
 class ApiClient {
   private baseUrl: string
   private projectName: string
@@ -87,8 +99,11 @@ class ApiClient {
     options: RequestInit = {},
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+    const headers: Record<string, string> = {}
+
+    const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData
+    if (!isFormDataBody) {
+      headers['Content-Type'] = 'application/json'
     }
 
     if (options.headers) {
@@ -262,6 +277,50 @@ class ApiClient {
     return this.request(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data),
+    })
+  }
+
+  /**
+   * Upload user document file
+   */
+  async uploadUserFile(file: File): Promise<ApiResponse<{ id: string; file_name: string; file_size: string }>> {
+    const endpoint = '/upload/'
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return this.request(endpoint, {
+      method: 'POST',
+      body: formData,
+    })
+  }
+
+  /**
+   * Get files uploaded by current authenticated user
+   */
+  async getUserFiles(): Promise<ApiResponse<UploadedFileListData>> {
+    const endpoint = '/get-files/'
+    return this.request(endpoint, {
+      method: 'GET',
+    })
+  }
+
+  /**
+   * Remove one uploaded file for current user
+   */
+  async removeUserFile(fileId: string): Promise<ApiResponse> {
+    const endpoint = `/remove-file/${encodeURIComponent(fileId)}/`
+    return this.request(endpoint, {
+      method: 'DELETE',
+    })
+  }
+
+  /**
+   * Remove all uploaded files for current user
+   */
+  async removeAllUserFiles(): Promise<ApiResponse> {
+    const endpoint = '/remove-files/'
+    return this.request(endpoint, {
+      method: 'DELETE',
     })
   }
 }

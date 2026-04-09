@@ -6,6 +6,7 @@ import { Check, Copy, FileText, Loader2, Send, Trash2, UploadCloud } from "lucid
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
+import { apiClient } from "@/lib/api-client"
 import {
   documentChat,
   type DocumentChatMessage,
@@ -42,6 +43,16 @@ function createMessageId(): string {
 
 function toServerMessages(messages: MessageView[]): DocumentChatMessage[] {
   return messages.map((item) => ({ role: item.role, content: item.content }))
+}
+
+function toStoredDocument(item: { id: string; file_name: string }): StoredDocument {
+  return {
+    id: item.id,
+    fileName: item.file_name,
+    createdAt: new Date().toISOString(),
+    status: "ready",
+    chunkCount: 0,
+  }
 }
 
 async function copyText(text: string): Promise<void> {
@@ -115,14 +126,16 @@ export function DocumentChat() {
 
   async function loadDocuments(): Promise<void> {
     try {
-      const response = await fetch("/api/documents", { cache: "no-store" })
-      const payload = (await response.json()) as { documents?: StoredDocument[]; error?: string }
-      if (response.status === 401) {
-        handleUnauthorized(payload.error)
+      const result = await apiClient.getUserFiles()
+      if (result.success === false || result.error) {
+        const message = result.message || "Failed to load documents"
+        if (message.toLowerCase().includes("auth")) {
+          handleUnauthorized(message)
+        }
+        throw new Error(message)
       }
-      if (!response.ok) throw new Error(payload.error ?? "Failed to load documents")
 
-      const docs = payload.documents ?? []
+      const docs = (result.data?.results ?? []).map(toStoredDocument)
       setDocuments(docs)
       if (docs.length > 0 && !selectedDocumentId) {
         setSelectedDocumentId(docs[0].id)
@@ -137,33 +150,17 @@ export function DocumentChat() {
     setError(null)
 
     try {
-      const formData = new FormData()
-      formData.append("file", file)
-
-      const response = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData,
-      })
-
-      const payload = (await response.json()) as {
-        error?: string
-        document?: StoredDocument
-      }
-
-      if (response.status === 401) {
-        handleUnauthorized(payload.error)
-      }
-
-      if (!response.ok || !payload.document) {
-        throw new Error(payload.error ?? "Upload failed")
+      const result = await apiClient.uploadUserFile(file)
+      if (result.success === false || result.error || !result.data?.id) {
+        const message = result.message || "Upload failed"
+        if (message.toLowerCase().includes("auth")) {
+          handleUnauthorized(message)
+        }
+        throw new Error(message)
       }
 
       await loadDocuments()
-      setDocuments((current) => {
-        const existing = current.filter((item) => item.id !== payload.document!.id)
-        return [payload.document!, ...existing]
-      })
-      setSelectedDocumentId(payload.document.id)
+      setSelectedDocumentId(String(result.data.id))
       setMessages([])
       setQuestion("")
     } catch (err) {
@@ -181,13 +178,13 @@ export function DocumentChat() {
 
     setError(null)
     try {
-      const response = await fetch(`/api/documents/${documentId}`, { method: "DELETE" })
-      const payload = (await response.json()) as { error?: string }
-      if (response.status === 401) {
-        handleUnauthorized(payload.error)
-      }
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Delete failed")
+      const result = await apiClient.removeUserFile(documentId)
+      if (result.success === false || result.error) {
+        const message = result.message || "Delete failed"
+        if (message.toLowerCase().includes("auth")) {
+          handleUnauthorized(message)
+        }
+        throw new Error(message)
       }
 
       await loadDocuments()
@@ -197,6 +194,32 @@ export function DocumentChat() {
         const remaining = documents.filter((item) => item.id !== documentId)
         setSelectedDocumentId(remaining[0]?.id ?? "")
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed")
+    }
+  }
+
+  async function handleDeleteAllDocuments(): Promise<void> {
+    if (isLoading || isUploading || documents.length === 0) return
+    if (!window.confirm("Delete all uploaded documents and indexed embeddings? This cannot be undone.")) {
+      return
+    }
+
+    setError(null)
+    try {
+      const result = await apiClient.removeAllUserFiles()
+      if (result.success === false || result.error) {
+        const message = result.message || "Delete failed"
+        if (message.toLowerCase().includes("auth")) {
+          handleUnauthorized(message)
+        }
+        throw new Error(message)
+      }
+
+      setDocuments([])
+      setSelectedDocumentId("")
+      setMessages([])
+      setQuestion("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed")
     }
@@ -319,17 +342,30 @@ export function DocumentChat() {
           ) : (
             <p className="text-xs text-muted-foreground">Signed in as {user.username}</p>
           )}
-          {selectedDocument && (
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => void handleDeleteDocument(selectedDocument.id)}
-              className="h-7 px-2 gap-1"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Delete
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {documents.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void handleDeleteAllDocuments()}
+                className="h-7 px-2 gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Remove all
+              </Button>
+            )}
+            {selectedDocument && (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => void handleDeleteDocument(selectedDocument.id)}
+                className="h-7 px-2 gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </Button>
+            )}
+          </div>
         </div>
         {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
       </div>

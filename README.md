@@ -8,7 +8,6 @@ A secure legal-document chat system built with Next.js, Upstash Vector, and Groq
 - Authenticated owner-scoped access controls
 - RAG-based Q&A with citations
 - Legal analytics dashboard (`/analytics`)
-- MCP server for legal tools (`/api/mcp`)
 - One-click document + embedding deletion
 - Light/dark theme support
 
@@ -24,7 +23,6 @@ A secure legal-document chat system built with Next.js, Upstash Vector, and Groq
 - `/api/auth/logout` – Logout
 - `/api/auth/me` – Session status
 - `/api/analytics` – Legal analytics
-- `/api/mcp` – MCP server for legal document tools
 
 ## Environment Variables
 
@@ -48,29 +46,6 @@ Development fallback credentials (when `DOCUMENT_AUTH_USERS_JSON` is not set):
 
 - username: `admin`
 - password: `admin123`
-
-## MCP Tools
-
-The MCP server exposes legal-document tools:
-
-- `list_legal_documents`
-- `search_legal_document`
-- `ask_legal_document`
-
-### VS Code MCP Config
-
-`.vscode/mcp.json`:
-
-```json
-{
-  "servers": {
-    "legal-document": {
-      "type": "http",
-      "url": "http://localhost:3000/api/mcp"
-    }
-  }
-}
-```
 
 ## Development
 

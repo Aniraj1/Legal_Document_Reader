@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useCallback, useEffect, useState } from 'react'
-import { apiClient, AuthTokens, AuthUser, ApiResponse } from './api-client'
+import { apiClient, AuthUser } from './api-client'
 
 export interface AuthContextType {
   user: AuthUser | null

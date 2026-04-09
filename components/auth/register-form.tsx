@@ -65,15 +65,6 @@ export const RegisterForm = () => {
       return false
     }
 
-    // Check password strength (at least one number, one letter, one special char recommended)
-    const hasNumber = /\d/.test(formData.password)
-    const hasLetter = /[a-zA-Z]/.test(formData.password)
-
-    if (!formData.password) {
-      setLocalError('Password is required')
-      return false
-    }
-
     if (formData.password !== formData.confirmPassword) {
       setLocalError('Passwords do not match')
       return false

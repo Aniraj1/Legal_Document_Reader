@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { BarChart3, LogOut, Moon, Sun, User, MoreVertical } from "lucide-react"
+import { BarChart3, LogOut, Moon, Sun, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,

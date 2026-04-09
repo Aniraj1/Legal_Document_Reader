@@ -38,6 +38,25 @@ export interface UploadedFileListData {
   results: UploadedFileItem[]
 }
 
+export interface AskGroqChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface AskGroqSource {
+  chunk_id?: string
+  section_title?: string
+  content_preview?: string
+  relevance_score?: number
+}
+
+export interface AskGroqData {
+  answer: string
+  sources: AskGroqSource[]
+  confidence: 'high' | 'medium' | 'low' | 'none' | string
+  metadata?: Record<string, unknown>
+}
+
 class ApiClient {
   private baseUrl: string
   private projectName: string
@@ -321,6 +340,22 @@ class ApiClient {
     const endpoint = '/remove-files/'
     return this.request(endpoint, {
       method: 'DELETE',
+    })
+  }
+
+  /**
+   * Ask question about an uploaded document using backend RAG
+   */
+  async askGroq(data: {
+    file_id: string
+    query: string
+    model?: string
+    chat_history?: AskGroqChatMessage[]
+  }): Promise<ApiResponse<AskGroqData>> {
+    const endpoint = '/ask-groq/'
+    return this.request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
     })
   }
 }

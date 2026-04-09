@@ -7,11 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/use-auth"
 import { apiClient } from "@/lib/api-client"
-import {
-  documentChat,
-  type DocumentChatMessage,
-  type DocumentChatResponse,
-} from "@/app/actions-document-chat"
 
 type AllowedModel = "llama-3.1-8b-instant" | "llama-3.3-70b-versatile"
 
@@ -34,14 +29,19 @@ type MessageView = {
   id: string
   role: "user" | "assistant"
   content: string
-  sources?: DocumentChatResponse["sources"]
+  sources?: Array<{
+    id: string
+    score: number
+    data?: string
+    metadata?: Record<string, unknown>
+  }>
 }
 
 function createMessageId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-function toServerMessages(messages: MessageView[]): DocumentChatMessage[] {
+function toServerMessages(messages: MessageView[]): Array<{ role: "user" | "assistant"; content: string }> {
   return messages.map((item) => ({ role: item.role, content: item.content }))
 }
 
@@ -244,18 +244,35 @@ export function DocumentChat() {
     setQuestion("")
 
     try {
-      const result = await documentChat({
-        question: trimmed,
-        documentId: selectedDocumentId,
+      const result = await apiClient.askGroq({
+        file_id: selectedDocumentId,
+        query: trimmed,
         model,
-        messages: toServerMessages(priorMessages),
+        chat_history: toServerMessages(priorMessages),
       })
+
+      if (result.success === false || result.error || !result.data?.answer) {
+        const message = result.message || "Failed to process your question"
+        if (message.toLowerCase().includes("auth")) {
+          handleUnauthorized(message)
+        }
+        throw new Error(message)
+      }
+
+      const normalizedSources = (result.data.sources ?? []).map((source, index) => ({
+        id: String(source.chunk_id ?? `source-${index + 1}`),
+        score: typeof source.relevance_score === "number" ? source.relevance_score : 0,
+        data: source.content_preview ?? "",
+        metadata: {
+          sourceLabel: source.section_title ?? `Source ${index + 1}`,
+        },
+      }))
 
       const assistantMessage: MessageView = {
         id: createMessageId(),
         role: "assistant",
-        content: result.answer,
-        sources: result.sources,
+        content: result.data.answer,
+        sources: normalizedSources,
       }
 
       setMessages((current) => [...current, assistantMessage])

@@ -39,6 +39,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const normalizeUserDetail = useCallback((data: Pick<AuthUser, 'first_name' | 'last_name'>) => {
+    const firstName = data.first_name?.trim() || ''
+    const lastName = data.last_name?.trim() || ''
+
+    // Treat completely empty names as "no profile detail yet"
+    if (!firstName && !lastName) {
+      return null
+    }
+
+    return {
+      first_name: firstName,
+      last_name: lastName,
+    }
+  }, [])
+
   /**
    * Save user data to localStorage
    */
@@ -87,11 +102,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     saveUserData(normalizedUser)
     setUser(normalizedUser)
-    setUserDetail({
-      first_name: normalizedUser.first_name ?? '',
-      last_name: normalizedUser.last_name ?? '',
-    })
-  }, [])
+    setUserDetail(normalizeUserDetail(normalizedUser))
+  }, [normalizeUserDetail])
 
   /**
    * Initialize auth state from localStorage
@@ -108,18 +120,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             hydrateUserState(response.data)
           } else if (userData) {
             setUser(userData)
-            setUserDetail({
-              first_name: userData.first_name ?? '',
-              last_name: userData.last_name ?? '',
-            })
+            setUserDetail(normalizeUserDetail(userData))
           }
         } catch {
           if (userData) {
             setUser(userData)
-            setUserDetail({
-              first_name: userData.first_name ?? '',
-              last_name: userData.last_name ?? '',
-            })
+            setUserDetail(normalizeUserDetail(userData))
           }
         }
       }
@@ -127,7 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     void initializeAuth()
-  }, [hydrateUserState])
+  }, [hydrateUserState, normalizeUserDetail])
 
   /**
    * Refresh token periodically

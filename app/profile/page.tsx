@@ -1,15 +1,17 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
 import { UserProfileForm } from '@/components/profile/user-profile-form'
 import { Button } from '@/components/ui/button'
+import { LegalDocumentsModal } from '@/components/auth/legal-documents-modal'
 
 export default function ProfilePage() {
   const router = useRouter()
   const { user, isAuthenticated, logout, isLoading, getUserDetail } = useAuth()
+  const [activeLegalDocument, setActiveLegalDocument] = useState<'terms' | 'privacy' | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
@@ -74,7 +76,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Agreement Status</p>
-              <p className="text-foreground font-medium">
+              <div className="mt-1">
                 {user?.is_agreement ? (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                     Accepted
@@ -84,7 +86,28 @@ export default function ProfilePage() {
                     Not Accepted
                   </span>
                 )}
-              </p>
+
+                {user?.is_agreement && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveLegalDocument('terms')}
+                    >
+                      View Accepted Terms
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setActiveLegalDocument('privacy')}
+                    >
+                      View Accepted Privacy Policy
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -139,6 +162,12 @@ export default function ProfilePage() {
           </Link>
         </div>
       </div>
+
+      <LegalDocumentsModal
+        isOpen={activeLegalDocument !== null}
+        documentType={activeLegalDocument ?? 'terms'}
+        onClose={() => setActiveLegalDocument(null)}
+      />
     </div>
   )
 }

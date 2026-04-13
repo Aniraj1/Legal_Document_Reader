@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { LegalDocumentsModal } from '@/components/auth/legal-documents-modal'
 
 export const RegisterForm = () => {
   const router = useRouter()
   const { register, isLoading, error, clearError } = useAuth()
+  const [activeLegalDocument, setActiveLegalDocument] = useState<'terms' | 'privacy' | null>(null)
 
   const [formData, setFormData] = useState({
     username: '',
@@ -160,7 +162,7 @@ export const RegisterForm = () => {
       </div>
 
       {/* Terms Checkbox */}
-      <div className="flex items-center space-x-2">
+      <div className="flex items-start space-x-2">
         <Checkbox
           id="agreeToTerms"
           name="agreeToTerms"
@@ -170,16 +172,25 @@ export const RegisterForm = () => {
           }
           disabled={isLoading}
         />
-        <Label htmlFor="agreeToTerms" className="text-sm font-normal cursor-pointer">
+        <p className="text-sm leading-relaxed text-foreground">
           I agree to the{' '}
-          <Link href="#" className="text-primary hover:underline">
+          <button
+            type="button"
+            className="text-primary hover:underline"
+            onClick={() => setActiveLegalDocument('terms')}
+          >
             Terms of Service
-          </Link>{' '}
+          </button>{' '}
           and{' '}
-          <Link href="#" className="text-primary hover:underline">
+          <button
+            type="button"
+            className="text-primary hover:underline"
+            onClick={() => setActiveLegalDocument('privacy')}
+          >
             Privacy Policy
-          </Link>
-        </Label>
+          </button>
+          .
+        </p>
       </div>
 
       {/* Error Messages */}
@@ -201,6 +212,12 @@ export const RegisterForm = () => {
           Sign in
         </Link>
       </p>
+
+      <LegalDocumentsModal
+        isOpen={activeLegalDocument !== null}
+        documentType={activeLegalDocument ?? 'terms'}
+        onClose={() => setActiveLegalDocument(null)}
+      />
     </form>
   )
 }

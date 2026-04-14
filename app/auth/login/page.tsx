@@ -1,4 +1,5 @@
 import { LoginForm } from '@/components/auth/login-form'
+import { GuestOnly } from '@/components/auth/guest-only'
 
 export const metadata = {
   title: 'Sign In | Legal Document Assistant',
@@ -7,11 +8,13 @@ export const metadata = {
 
 export default function LoginPage() {
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-foreground mb-6 text-center">
-        Welcome Back
-      </h2>
-      <LoginForm />
-    </div>
+    <GuestOnly>
+      <div>
+        <h2 className="text-2xl font-bold text-foreground mb-6 text-center">
+          Welcome Back
+        </h2>
+        <LoginForm />
+      </div>
+    </GuestOnly>
   )
 }

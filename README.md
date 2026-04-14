@@ -6,6 +6,7 @@ A secure legal-document chat system built with Next.js, Upstash Vector, and Groq
 
 - Upload and index `.pdf` / `.docx` legal documents
 - Authenticated owner-scoped access controls
+- Guest-only auth pages: authenticated users are redirected away from `/auth/login` and `/auth/register`
 - RAG-based Q&A with citations
 - Legal analytics dashboard (`/analytics`)
 - One-click document + embedding deletion
@@ -53,6 +54,11 @@ Development fallback credentials (when `DOCUMENT_AUTH_USERS_JSON` is not set):
 pnpm install
 pnpm dev
 ```
+
+Auth navigation behavior:
+
+- Unauthenticated users are redirected to `/auth/login` from protected routes (for example `/` and `/profile`).
+- Authenticated users who visit `/auth/login` or `/auth/register` are redirected to `/`.
 
 ## Production Build
 
